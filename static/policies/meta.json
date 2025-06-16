@@ -1,0 +1,40 @@
+{
+  "policies": {
+    "shipping": {
+      "type": "shipping",
+      "language": "en",
+      "last_updated": "2025-01-29T10:00:00Z",
+      "updated_by": "system"
+    },
+    "refund": {
+      "type": "refund",
+      "language": "en",
+      "last_updated": "2025-01-29T10:00:00Z",
+      "updated_by": "system"
+    },
+    "about": {
+      "type": "about",
+      "language": "en",
+      "last_updated": "2025-06-15T04:45:28.415632Z",
+      "updated_by": "admin"
+    },
+    "shipping_zh-CN": {
+      "type": "shipping",
+      "language": "zh-CN",
+      "last_updated": "2025-06-15T04:33:02.027189Z",
+      "updated_by": "admin (AI Translated)"
+    },
+    "refund_zh-CN": {
+      "type": "refund",
+      "language": "zh-CN",
+      "last_updated": "2025-06-15T04:34:17.688342Z",
+      "updated_by": "admin (AI Translated)"
+    },
+    "about_zh-CN": {
+      "type": "about",
+      "language": "zh-CN",
+      "last_updated": "2025-06-15T04:39:04.064212Z",
+      "updated_by": "admin"
+    }
+  }
+}

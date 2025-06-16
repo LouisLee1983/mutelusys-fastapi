@@ -1,0 +1,2 @@
+这是一个测试文件，用于验证FastAPI静态文件服务是否正常工作。
+访问地址：http://localhost:8008/static/test.txt 

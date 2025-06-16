@@ -1,0 +1,34 @@
+{
+    "output": {
+        "choices": [
+            {
+                "finish_reason": "stop",
+                "message": {
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "text": "{\n    \"name\": \"蓝晶石珍珠手链\",\n    \"description\": \"这款精美的手链由天然蓝晶石和珍珠制成，搭配金色金属配件，展现出优雅与高贵的气质。手链设计简 约而不失精致，适合各种场合佩戴。\",\n    \"materials\": [\"蓝晶石\", \"珍珠\", \"金色金属\"],\n    \"colors\": [\"浅蓝色\", \"白色\", \"金色\"],\n    \"sizes\": [\"标准尺寸\"],\n    \"style\": \"简约优雅\",\n    \"targets\": [\"女性\", \"年轻成人\"],\n    \"scenes\": [\"日常佩戴\", \"礼品赠送\", \"特殊场合\"],\n    \"features\": [\"天然蓝晶石\", \"高品质珍珠\", \"金色金属配件\"],\n    \"tags\": [\"饰品\", \"手链\", \"天然宝石\"],\n    \"categories\": [\"珠宝首饰\", \"手链\"],\n    \"price_min\": 50,\n    \"price_max\": 150,\n    \"currency\": \"USD\",\n    \"confidence\": 0.95\n}"
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "usage": {
+        "input_tokens_details": {
+            "text_tokens": 406,
+            "image_tokens": 1227
+        },
+        "total_tokens": 1847,
+        "output_tokens": 214,
+        "input_tokens": 1633,
+        "output_tokens_details": {
+            "text_tokens": 214
+        },
+        "image_tokens": 1227,
+        "prompt_tokens_details": {
+            "cached_tokens": 0
+        }
+    },
+    "request_id": "67d761ec-0322-97dc-a86e-101c6bff599d"
+}

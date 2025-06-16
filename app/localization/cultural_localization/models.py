@@ -1,0 +1,5 @@
+from app.localization.models import CulturalLocalization, CulturalLocalizationTranslation
+
+# 引用主模型中的CulturalLocalization和CulturalLocalizationTranslation类，保持一致性
+# 这样可以通过from app.localization.cultural_localization.models import CulturalLocalization, CulturalLocalizationTranslation来引用
+# 满足项目的模块化组织要求
