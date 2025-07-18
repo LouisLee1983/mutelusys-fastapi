@@ -3,8 +3,8 @@
     "shipping": {
       "type": "shipping",
       "language": "en",
-      "last_updated": "2025-01-29T10:00:00Z",
-      "updated_by": "system"
+      "last_updated": "2025-06-18T09:19:45.339465Z",
+      "updated_by": "admin"
     },
     "refund": {
       "type": "refund",
@@ -21,8 +21,8 @@
     "shipping_zh-CN": {
       "type": "shipping",
       "language": "zh-CN",
-      "last_updated": "2025-06-15T04:33:02.027189Z",
-      "updated_by": "admin (AI Translated)"
+      "last_updated": "2025-06-18T09:19:16.842919Z",
+      "updated_by": "admin"
     },
     "refund_zh-CN": {
       "type": "refund",
@@ -35,6 +35,12 @@
       "language": "zh-CN",
       "last_updated": "2025-06-15T04:39:04.064212Z",
       "updated_by": "admin"
+    },
+    "shipping_ja-JP": {
+      "type": "shipping",
+      "language": "ja-JP",
+      "last_updated": "2025-06-18T09:20:53.717583Z",
+      "updated_by": "admin (AI Translated)"
     }
   }
 }

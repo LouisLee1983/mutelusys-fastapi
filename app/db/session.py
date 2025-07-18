@@ -1,8 +1,7 @@
 import json
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
-DATABASE_URL = "postgresql://postgres:Postgre,.1@localhost:5432/muteludb"
+from app.core.config import settings
 
 # 配置JSON序列化器，确保中文字符不被转义为Unicode
 def json_serializer(obj):
@@ -10,7 +9,7 @@ def json_serializer(obj):
 
 # 创建引擎时指定JSON序列化器
 engine = create_engine(
-    DATABASE_URL, 
+    settings.DATABASE_URL, 
     echo=False,
     json_serializer=json_serializer  # 使用自定义JSON序列化器
 )

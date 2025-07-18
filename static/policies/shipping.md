@@ -1,7 +1,7 @@
 # SHIPPING POLICY
 
 ## ✈ Worldwide Free Shipping For Orders Over $69.99 ✈
-
+![第1页-7.PNG](/static/policies/images/shipping/20250618091855_第1页-7.PNG)
 ### Shipping Range
 
 - We can ship to the world & Worldwide free shipping for orders over **$69.99**.
