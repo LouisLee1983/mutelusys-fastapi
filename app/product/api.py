@@ -21,6 +21,13 @@ from app.product.schema import (
     ProductQueryParams
 )
 from app.product.models import ProductCategory, ProductStatus, Product
+from app.product.sku.translation_service import ProductSkuTranslationService
+from app.product.sku.schema import (
+    ProductSkuTranslationCreate,
+    ProductSkuTranslationUpdate,
+    ProductSkuTranslationResponse,
+    ProductSkuWithTranslations
+)
 
 router = APIRouter()
 
@@ -30,6 +37,7 @@ def get_products(
     skip: int = Query(default=0, ge=0, description="跳过记录数"),
     limit: int = Query(default=20, ge=1, le=100, description="返回记录数"),
     search: Optional[str] = Query(None, description="搜索关键词"),
+    category_id: Optional[UUID] = Query(None, description="分类ID筛选"),
     status: Optional[ProductStatus] = Query(None, description="商品状态筛选"),
     is_featured: Optional[bool] = Query(None, description="是否推荐商品筛选"),
     is_new: Optional[bool] = Query(None, description="是否新品筛选"),
@@ -48,6 +56,7 @@ def get_products(
         skip=skip,
         limit=limit,
         search=search,
+        category_id=category_id,
         status=status,
         is_featured=is_featured,
         is_new=is_new,
@@ -305,3 +314,121 @@ def delete_product_main_image(
         db.rollback()
         print(f"删除主图失败: {str(e)}")
         raise HTTPException(status_code=500, detail=f"删除主图失败: {str(e)}")
+
+
+# ==================== SKU翻译相关端点 ====================
+
+@router.post("/skus/{sku_id}/translations", response_model=ProductSkuTranslationResponse, summary="创建SKU翻译")
+async def create_sku_translation(
+    sku_id: UUID,
+    translation_data: ProductSkuTranslationCreate,
+    db: Session = Depends(get_db)
+):
+    """创建SKU翻译"""
+    try:
+        return ProductSkuTranslationService.create_translation(db, sku_id, translation_data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/skus/{sku_id}/translations", response_model=List[ProductSkuTranslationResponse], summary="获取SKU所有翻译")
+async def get_sku_translations(
+    sku_id: UUID,
+    db: Session = Depends(get_db)
+):
+    """获取SKU的所有翻译"""
+    return ProductSkuTranslationService.get_sku_translations(db, sku_id)
+
+
+@router.get("/skus/{sku_id}/translations/{language_code}", response_model=ProductSkuTranslationResponse, summary="获取SKU指定语言翻译")
+async def get_sku_translation(
+    sku_id: UUID,
+    language_code: str,
+    db: Session = Depends(get_db)
+):
+    """获取SKU指定语言的翻译"""
+    translation = ProductSkuTranslationService.get_translation(db, sku_id, language_code)
+    if not translation:
+        raise HTTPException(status_code=404, detail=f"SKU {sku_id} 的 {language_code} 翻译不存在")
+    return translation
+
+
+@router.put("/skus/{sku_id}/translations/{language_code}", response_model=ProductSkuTranslationResponse, summary="更新SKU翻译")
+async def update_sku_translation(
+    sku_id: UUID,
+    language_code: str,
+    translation_data: ProductSkuTranslationUpdate,
+    db: Session = Depends(get_db)
+):
+    """更新SKU翻译"""
+    translation = ProductSkuTranslationService.update_translation(db, sku_id, language_code, translation_data)
+    if not translation:
+        raise HTTPException(status_code=404, detail=f"SKU {sku_id} 的 {language_code} 翻译不存在")
+    return translation
+
+
+@router.delete("/skus/{sku_id}/translations/{language_code}", summary="删除SKU翻译")
+async def delete_sku_translation(
+    sku_id: UUID,
+    language_code: str,
+    db: Session = Depends(get_db)
+):
+    """删除SKU翻译"""
+    success = ProductSkuTranslationService.delete_translation(db, sku_id, language_code)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"SKU {sku_id} 的 {language_code} 翻译不存在")
+    return {"message": f"SKU {sku_id} 的 {language_code} 翻译已删除"}
+
+
+@router.post("/skus/{sku_id}/translations/auto-translate", summary="自动翻译SKU")
+async def auto_translate_sku(
+    sku_id: UUID,
+    target_languages: List[str] = Query(..., description="目标语言列表"),
+    source_language: str = Query("zh-CN", description="源语言"),
+    context: Optional[str] = Query(None, description="翻译上下文"),
+    db: Session = Depends(get_db)
+):
+    """自动翻译SKU到指定语言"""
+    result = await ProductSkuTranslationService.auto_translate_sku(
+        db=db,
+        sku_id=sku_id,
+        target_languages=target_languages,
+        source_language=source_language,
+        context=context
+    )
+    
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result.get("error", "翻译失败"))
+    
+    return result
+
+
+@router.get("/skus/{sku_id}/sku-name/{language_code}", summary="获取指定语言的SKU名称")
+async def get_sku_name_by_language(
+    sku_id: UUID,
+    language_code: str,
+    fallback_to_default: bool = Query(True, description="是否回退到默认名称"),
+    db: Session = Depends(get_db)
+):
+    """获取指定语言的SKU名称"""
+    sku_name = ProductSkuTranslationService.get_sku_name_by_language(
+        db=db,
+        sku_id=sku_id,
+        language_code=language_code,
+        fallback_to_default=fallback_to_default
+    )
+    
+    if not sku_name:
+        raise HTTPException(status_code=404, detail=f"SKU {sku_id} 的 {language_code} 名称不存在")
+    
+    return {"sku_id": sku_id, "language_code": language_code, "sku_name": sku_name}
+
+
+@router.post("/skus/translations/batch-create-default", summary="批量创建默认翻译")
+async def batch_create_default_sku_translations(
+    language_code: str = Query("zh-CN", description="语言代码"),
+    db: Session = Depends(get_db)
+):
+    """批量为现有SKU创建默认语言翻译记录"""
+    result = ProductSkuTranslationService.batch_create_default_translations(db, language_code)
+    return result

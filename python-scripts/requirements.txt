@@ -1,0 +1,5 @@
+# 数据库同步工具依赖
+sqlalchemy>=1.4.0
+psycopg2-binary>=2.8.0
+python-dotenv>=0.19.0
+colorama>=0.4.4

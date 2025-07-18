@@ -474,7 +474,7 @@ async def upload_policy_image(
     }
 
 # Public API endpoints (无需登录)
-@router.get("/api/v1/public/policies/{policy_type}")
+@router.get("/public/policies/{policy_type}")
 async def get_public_policy(
     policy_type: str,
     db: Session = Depends(get_db)

@@ -30,6 +30,7 @@ class ProductService:
         skip: int = 0, 
         limit: int = 20,
         search: Optional[str] = None,
+        category_id: Optional[UUID] = None,
         status: Optional[ProductStatus] = None,
         is_featured: Optional[bool] = None,
         is_new: Optional[bool] = None,
@@ -47,6 +48,10 @@ class ProductService:
         if search:
             # 搜索商品编码
             query = query.filter(Product.sku_code.ilike(f"%{search}%"))
+            
+        if category_id:
+            # 通过product_category关联表筛选分类
+            query = query.join(product_category).filter(product_category.c.category_id == category_id)
             
         if status:
             query = query.filter(Product.status == status)
@@ -136,6 +141,11 @@ class ProductService:
         
         # 创建商品，包含name和description
         create_data = product_data.dict()
+        
+        # 如果sku_name没有填写，默认使用sku_code的值
+        if not create_data.get("sku_name"):
+            create_data["sku_name"] = create_data["sku_code"]
+        
         new_product = Product(**create_data)
         db.add(new_product)
         
@@ -176,6 +186,14 @@ class ProductService:
         
         # 更新商品基本信息
         update_data = product_data.dict(exclude_unset=True)
+        
+        # 如果更新了sku_code但没有设置sku_name，则使用sku_code作为sku_name
+        if "sku_code" in update_data and "sku_name" not in update_data:
+            update_data["sku_name"] = update_data["sku_code"]
+        # 如果sku_name被设置为空值，则使用sku_code作为默认值
+        elif "sku_name" in update_data and not update_data["sku_name"]:
+            update_data["sku_name"] = update_data.get("sku_code", product.sku_code)
+        
         for key, value in update_data.items():
             setattr(product, key, value)
         

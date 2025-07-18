@@ -126,6 +126,46 @@ async def get_current_customer(
     except Exception:
         raise credentials_exception
 
+# 获取当前用户（可选）- 用于追踪等功能
+async def get_current_user_optional(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    """尝试从JWT令牌获取当前用户，如果失败则返回None"""
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        user_id: str = payload.get("sub")
+        role: str = payload.get("role")
+        
+        if user_id is None:
+            return None
+            
+        # 根据角色类型获取用户
+        if role == "customer":
+            from app.customer.service import CustomerService
+            from uuid import UUID
+            try:
+                customer = CustomerService.get_customer_by_id(db, UUID(user_id))
+                if customer and customer.status == "active":
+                    return customer
+            except:
+                pass
+        elif role == "admin":
+            from app.security.user.service import get_user_by_id
+            from uuid import UUID
+            try:
+                user = get_user_by_id(db, UUID(user_id))
+                if user and user.is_active:
+                    return user
+            except:
+                pass
+                
+    except:
+        # 任何错误都返回None
+        pass
+    
+    return None
+
 # 重导出这些依赖函数，以便统一使用
 __all__ = [
     "get_db",
@@ -133,4 +173,5 @@ __all__ = [
     "get_current_admin",
     "get_current_admin_user",
     "get_current_customer",
+    "get_current_user_optional",
 ] 

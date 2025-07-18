@@ -11,14 +11,16 @@ from app.product.sku.schema import (
     ProductSkuUpdate,
     ProductSkuList,
     ProductSkuInventoryUpdate,
-    ProductSkuBulkStatusUpdate
+    ProductSkuBulkStatusUpdate,
+    StockAdjustment,
+    StockHistory
 )
 from app.product.models import ProductStatus
 from app.product.sku.service import ProductSkuService
 from app.security.models import User
 
 
-router = APIRouter(prefix="/skus", tags=["产品SKU管理"])
+router = APIRouter(prefix="/skus")
 
 
 @router.get("")
@@ -179,3 +181,76 @@ def bulk_update_status(
     批量更新SKU状态
     """
     return ProductSkuService.bulk_update_status(db, bulk_update)
+
+
+# ==================== 新增的简化库存管理API ====================
+
+@router.post("/{sku_id}/stock/adjust")
+def adjust_stock(
+    sku_id: UUID = Path(..., description="SKU ID"),
+    adjustment: StockAdjustment = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    手动调整库存（用于盘点、损耗等）
+    """
+    sku = ProductSkuService.adjust_stock(
+        db=db,
+        sku_id=sku_id,
+        quantity_change=adjustment.quantity_change,
+        change_type="adjust",
+        remark=adjustment.remark,
+        created_by=current_user.username if hasattr(current_user, 'username') else str(current_user.id)
+    )
+    return {
+        "success": True,
+        "message": f"库存调整成功",
+        "data": {
+            "sku_id": str(sku.id),
+            "sku_code": sku.sku_code,
+            "stock_quantity": sku.stock_quantity,
+            "is_low_stock": sku.is_low_stock
+        }
+    }
+
+
+@router.get("/{sku_id}/stock/history")
+def get_stock_history(
+    sku_id: UUID = Path(..., description="SKU ID"),
+    skip: int = Query(0, ge=0, description="分页起始位置"),
+    limit: int = Query(20, ge=1, le=100, description="每页数量"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    获取库存变动历史
+    """
+    from app.product.models import StockLog
+    from sqlalchemy import desc
+    
+    query = db.query(StockLog).filter(StockLog.sku_id == sku_id)
+    total = query.count()
+    
+    logs = query.order_by(desc(StockLog.created_at)).offset(skip).limit(limit).all()
+    
+    return {
+        "code": 200,
+        "message": "操作成功",
+        "data": {
+            "total": total,
+            "items": [
+                {
+                    "id": log.id,
+                    "change_type": log.change_type,
+                    "quantity": log.quantity,
+                    "balance": log.balance,
+                    "order_id": str(log.order_id) if log.order_id else None,
+                    "remark": log.remark,
+                    "created_at": log.created_at.isoformat(),
+                    "created_by": log.created_by
+                }
+                for log in logs
+            ]
+        }
+    }

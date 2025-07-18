@@ -19,7 +19,7 @@ from app.product.inventory.schema import (
 )
 from app.product.inventory.service import ProductInventoryService
 
-router = APIRouter(prefix="/api/v1/admin/inventories", tags=["inventory"])
+router = APIRouter(prefix="/api/v1/admin/inventories")
 
 # 获取库存列表
 @router.get("", response_model=ProductInventoryList)

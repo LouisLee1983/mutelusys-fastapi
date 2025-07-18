@@ -37,7 +37,8 @@ class ProductAttributeValue(ProductAttributeValueBase):
 class ProductSkuBase(BaseModel):
     """SKU基础模型"""
     product_id: UUID = Field(..., description="产品ID")
-    sku_code: str = Field(..., min_length=1, max_length=50, description="SKU编码，唯一")
+    sku_code: str = Field(..., min_length=1, max_length=50, description="SKU编码，唯一，内部使用")
+    sku_name: Optional[str] = Field(None, max_length=255, description="SKU外显名称，给消费者看的名称")
     barcode: Optional[str] = Field(None, max_length=50, description="条形码")
     price_adjustment: Optional[float] = Field(None, description="价格调整，相对于产品基本价格的增减金额")
     price_adjustment_percentage: Optional[float] = Field(None, description="价格调整百分比，相对于产品基本价格的增减百分比")
@@ -62,6 +63,7 @@ class ProductSkuCreate(ProductSkuBase):
 class ProductSkuUpdate(BaseModel):
     """SKU更新模型"""
     sku_code: Optional[str] = Field(None, min_length=1, max_length=50)
+    sku_name: Optional[str] = Field(None, max_length=255, description="SKU外显名称，给消费者看的名称")
     barcode: Optional[str] = None
     price_adjustment: Optional[float] = None
     price_adjustment_percentage: Optional[float] = None
@@ -94,6 +96,7 @@ class ProductSkuListItem(BaseModel):
     id: UUID
     product_id: UUID
     sku_code: str
+    sku_name: Optional[str] = None
     status: ProductStatus
     barcode: Optional[str] = None
     price_adjustment: Optional[float] = None
@@ -129,3 +132,62 @@ class ProductSkuInventoryUpdate(BaseModel):
     """更新SKU库存"""
     quantity: int = Field(..., ge=0, description="库存数量")
     low_stock_threshold: Optional[int] = Field(None, ge=0, description="低库存阈值")
+
+
+class ProductSkuTranslationBase(BaseModel):
+    """SKU翻译基础Schema"""
+    language_code: str = Field(..., description="语言代码")
+    sku_name: str = Field(..., description="SKU外显名称翻译")
+
+
+class ProductSkuTranslationCreate(ProductSkuTranslationBase):
+    """创建SKU翻译Schema"""
+    sku_id: UUID = Field(..., description="SKU ID")
+
+
+class ProductSkuTranslationUpdate(BaseModel):
+    """更新SKU翻译Schema"""
+    sku_name: Optional[str] = Field(None, description="SKU外显名称翻译")
+
+
+class ProductSkuTranslationResponse(ProductSkuTranslationBase):
+    """SKU翻译响应Schema"""
+    id: UUID
+    sku_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ProductSkuWithTranslations(ProductSku):
+    """带翻译的SKU响应Schema"""
+    translations: List[ProductSkuTranslationResponse] = Field(default_factory=list, description="SKU翻译列表")
+
+    class Config:
+        from_attributes = True
+
+
+# ==================== 简化的库存管理Schema ====================
+
+class StockAdjustment(BaseModel):
+    """库存调整请求"""
+    quantity_change: int = Field(..., description="库存变动数量(正数增加,负数减少)")
+    remark: Optional[str] = Field(None, max_length=200, description="备注")
+
+
+class StockHistory(BaseModel):
+    """库存历史记录"""
+    id: int
+    sku_id: UUID
+    change_type: str = Field(..., description="变动类型：in(入库), out(出库), order(订单), cancel(取消), adjust(调整), return(退货)")
+    quantity: int = Field(..., description="变动数量")
+    balance: int = Field(..., description="变动后余额")
+    order_id: Optional[UUID] = None
+    remark: Optional[str] = None
+    created_at: datetime
+    created_by: Optional[str] = None
+    
+    class Config:
+        from_attributes = True

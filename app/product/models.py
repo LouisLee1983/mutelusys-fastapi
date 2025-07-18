@@ -127,6 +127,7 @@ class Product(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     sku_code = Column(String(50), nullable=False, unique=True, index=True, comment="商品编码，唯一")
+    sku_name = Column(String(255), nullable=True, comment="商品SKU外显名称，给消费者看的名称")
     name = Column(String(255), nullable=True, comment="商品名称")
     description = Column(Text, nullable=True, comment="商品描述")
     status = Column(Enum(ProductStatus), nullable=False, default=ProductStatus.DRAFT, comment="商品状态：草稿、上架、下架、已删除")
@@ -167,6 +168,8 @@ class Product(Base):
     materials = relationship("ProductMaterial", secondary=product_material, back_populates="products")
     themes = relationship("ProductTheme", secondary=product_theme, back_populates="products")
     target_groups = relationship("ProductTargetGroup", secondary=product_target_group, back_populates="products")
+    # 文章关联关系 - 延迟导入避免循环依赖
+    # articles = relationship("ProductArticle", secondary="product_article_associations", back_populates="products")
 
 
 class ProductCategory(Base):
@@ -204,6 +207,7 @@ class ProductTranslation(Base):
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
     language_code = Column(String(10), nullable=False, comment="语言代码，如en-US, zh-CN")
     name = Column(String(255), nullable=False, comment="商品名称")
+    sku_name = Column(String(255), nullable=True, comment="商品SKU外显名称翻译")
     short_description = Column(Text, nullable=True, comment="商品简短描述")
     description = Column(Text, nullable=True, comment="商品详细描述")
     specifications = Column(Text, nullable=True, comment="商品规格")
@@ -217,6 +221,84 @@ class ProductTranslation(Base):
 
     # 关联关系
     product = relationship("Product", back_populates="translations")
+    
+    async def translate_to(self, target_language: str, context: Optional[str] = None) -> Dict[str, Any]:
+        """
+        将当前产品翻译记录翻译到目标语言
+        
+        Args:
+            target_language: 目标语言代码 (如 en-US, th-TH)
+            context: 翻译上下文
+        
+        Returns:
+            翻译结果字典，包含所有翻译后的字段
+        """
+        from app.analytics.ai_copilot.alibaba_service import AlibabaBailianService
+        
+        service = AlibabaBailianService()
+        
+        # 准备需要翻译的文本
+        texts_to_translate = {
+            "name": self.name,
+            "sku_name": self.sku_name or "",
+            "short_description": self.short_description or "",
+            "description": self.description or "",
+            "specifications": self.specifications or "",
+            "benefits": self.benefits or "",
+            "instructions": self.instructions or "",
+            "seo_title": self.seo_title or "",
+            "seo_description": self.seo_description or "",
+            "seo_keywords": self.seo_keywords or ""
+        }
+        
+        # 构建翻译上下文
+        translation_context = f"这是商品相关的内容翻译。商品名称是：{self.name}"
+        if self.sku_name:
+            translation_context += f"，SKU名称是：{self.sku_name}"
+        if context:
+            translation_context += f"。{context}"
+        
+        translated_results = {}
+        
+        # 逐个翻译字段
+        for field_name, text in texts_to_translate.items():
+            if text and text.strip():  # 只翻译非空字段
+                try:
+                    result = await service.translate_text(
+                        source_text=text,
+                        target_language=target_language,
+                        source_language=self.language_code,
+                        context=translation_context
+                    )
+                    
+                    if result["success"]:
+                        translated_results[field_name] = result["translated_text"]
+                    else:
+                        print(f"翻译字段 {field_name} 失败: {result.get('error')}")
+                        translated_results[field_name] = text  # 保留原文
+                        
+                except Exception as e:
+                    print(f"翻译字段 {field_name} 异常: {str(e)}")
+                    translated_results[field_name] = text  # 保留原文
+            else:
+                translated_results[field_name] = text  # 空字段保持空
+        
+        return {
+            "product_id": self.product_id,
+            "language_code": target_language,
+            "name": translated_results.get("name", ""),
+            "sku_name": translated_results.get("sku_name", ""),
+            "short_description": translated_results.get("short_description", ""),
+            "description": translated_results.get("description", ""),
+            "specifications": translated_results.get("specifications", ""),
+            "benefits": translated_results.get("benefits", ""),
+            "instructions": translated_results.get("instructions", ""),
+            "seo_title": translated_results.get("seo_title", ""),
+            "seo_description": translated_results.get("seo_description", ""),
+            "seo_keywords": translated_results.get("seo_keywords", ""),
+            "source_language": self.language_code,
+            "translation_timestamp": datetime.utcnow().isoformat()
+        }
 
 
 class ProductCategoryTranslation(Base):
@@ -477,7 +559,8 @@ class ProductSku(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
-    sku_code = Column(String(50), nullable=False, unique=True, index=True, comment="SKU编码，唯一")
+    sku_code = Column(String(50), nullable=False, unique=True, index=True, comment="SKU编码，唯一，内部使用")
+    sku_name = Column(String(255), nullable=True, comment="SKU外显名称，给消费者看的名称")
     barcode = Column(String(50), nullable=True, comment="条形码")
     image_url = Column(String(255), nullable=True, comment="SKU特定图片URL")
     price_adjustment = Column(Float, default=0, comment="相对于基础价格的调整，可正可负")
@@ -488,6 +571,9 @@ class ProductSku(Base):
     is_active = Column(Boolean, default=True, comment="是否激活")
     is_default = Column(Boolean, default=False, comment="是否为默认SKU")
     sort_order = Column(Integer, default=0, comment="排序顺序")
+    # 简化的库存管理字段
+    stock_quantity = Column(Integer, default=0, nullable=False, comment="当前库存数量")
+    low_stock_threshold = Column(Integer, default=10, nullable=False, comment="低库存预警值")
     meta_data = Column(JSON, nullable=True, comment="元数据，存储其他扩展信息")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -496,6 +582,79 @@ class ProductSku(Base):
     product = relationship("Product", back_populates="skus")
     attribute_values = relationship("ProductAttributeValue", secondary=sku_attribute_value, back_populates="skus")
     inventories = relationship("ProductInventory", back_populates="sku", cascade="all, delete-orphan")
+    translations = relationship("ProductSkuTranslation", back_populates="sku", cascade="all, delete-orphan")
+    
+    # 计算属性
+    @property
+    def is_low_stock(self):
+        """是否低库存"""
+        return self.stock_quantity <= self.low_stock_threshold
+    
+    @property
+    def is_out_of_stock(self):
+        """是否缺货"""
+        return self.stock_quantity <= 0
+
+
+class ProductSkuTranslation(Base):
+    """商品SKU多语言翻译表"""
+    __tablename__ = "product_sku_translations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    sku_id = Column(UUID(as_uuid=True), ForeignKey("product_skus.id", ondelete="CASCADE"), nullable=False)
+    language_code = Column(String(10), nullable=False, comment="语言代码，如en-US, zh-CN")
+    sku_name = Column(String(255), nullable=False, comment="SKU外显名称翻译")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # 关联关系
+    sku = relationship("ProductSku", back_populates="translations")
+    
+    async def translate_to(self, target_language: str, context: Optional[str] = None) -> Dict[str, Any]:
+        """
+        将当前SKU翻译记录翻译到目标语言
+        
+        Args:
+            target_language: 目标语言代码 (如 en-US, th-TH)
+            context: 翻译上下文
+        
+        Returns:
+            翻译结果字典，包含翻译后的字段
+        """
+        from app.analytics.ai_copilot.alibaba_service import AlibabaBailianService
+        
+        service = AlibabaBailianService()
+        
+        # 构建翻译上下文
+        translation_context = f"这是商品SKU名称翻译。SKU名称是：{self.sku_name}"
+        if context:
+            translation_context += f"。{context}"
+        
+        try:
+            result = await service.translate_text(
+                source_text=self.sku_name,
+                target_language=target_language,
+                source_language=self.language_code,
+                context=translation_context
+            )
+            
+            if result["success"]:
+                translated_sku_name = result["translated_text"]
+            else:
+                print(f"翻译SKU名称失败: {result.get('error')}")
+                translated_sku_name = self.sku_name  # 保留原文
+                
+        except Exception as e:
+            print(f"翻译SKU名称异常: {str(e)}")
+            translated_sku_name = self.sku_name  # 保留原文
+        
+        return {
+            "sku_id": self.sku_id,
+            "language_code": target_language,
+            "sku_name": translated_sku_name,
+            "source_language": self.language_code,
+            "translation_timestamp": datetime.utcnow().isoformat()
+        }
 
 
 # ==================== 库存相关模型 ====================
@@ -802,4 +961,30 @@ class BundleItem(Base):
     # 关联关系
     bundle = relationship("ProductBundle", back_populates="items")
     product = relationship("Product")
+    sku = relationship("ProductSku")
+
+
+# ==================== 简化的库存日志模型 ====================
+
+class StockLog(Base):
+    """库存变动日志表，记录所有库存变动历史"""
+    __tablename__ = "stock_logs"
+    
+    id = Column(Integer, primary_key=True)
+    sku_id = Column(UUID(as_uuid=True), ForeignKey('product_skus.id', ondelete="CASCADE"), nullable=False)
+    
+    # 核心信息
+    change_type = Column(String(20), nullable=False, comment="变动类型：in(入库), out(出库), order(订单), cancel(取消), adjust(调整), return(退货)")
+    quantity = Column(Integer, nullable=False, comment="变动数量(正数增加,负数减少)")
+    balance = Column(Integer, nullable=False, comment="变动后余额")
+    
+    # 关联信息
+    order_id = Column(UUID(as_uuid=True), ForeignKey('orders.id', ondelete="SET NULL"), nullable=True, comment="关联的订单ID")
+    remark = Column(String(200), nullable=True, comment="备注")
+    
+    # 记录信息
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_by = Column(String(50), nullable=True, comment="操作人名称")
+    
+    # 关联关系
     sku = relationship("ProductSku")

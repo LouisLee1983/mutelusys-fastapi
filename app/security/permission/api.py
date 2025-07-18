@@ -15,8 +15,7 @@ router = APIRouter()
 # 获取权限列表 - 仅管理员可用
 @router.get(
     "/admin/permissions", 
-    summary="获取权限列表", 
-    tags=["权限管理"],
+    summary="获取权限列表",
     response_model=None  # 使用自定义响应格式
 )
 async def get_permission_list(
@@ -68,8 +67,7 @@ async def get_permission_list(
 # 创建权限 - 仅管理员可用
 @router.post(
     "/admin/permissions", 
-    summary="创建新权限", 
-    tags=["权限管理"],
+    summary="创建新权限",
     status_code=status.HTTP_201_CREATED
 )
 async def create_permission(
@@ -92,8 +90,7 @@ async def create_permission(
 # 获取指定权限 - 仅管理员可用
 @router.get(
     "/admin/permissions/{permission_id}", 
-    summary="获取指定权限信息", 
-    tags=["权限管理"]
+    summary="获取指定权限信息"
 )
 async def get_permission_by_id(
     permission_id: UUID,
@@ -111,8 +108,7 @@ async def get_permission_by_id(
 # 更新指定权限 - 仅管理员可用
 @router.patch(
     "/admin/permissions/{permission_id}", 
-    summary="更新指定权限信息", 
-    tags=["权限管理"]
+    summary="更新指定权限信息"
 )
 async def update_permission_by_id(
     permission_id: UUID,
@@ -132,8 +128,7 @@ async def update_permission_by_id(
 @router.delete(
     "/admin/permissions/{permission_id}", 
     response_model=Dict[str, Any], 
-    summary="删除指定权限", 
-    tags=["权限管理"]
+    summary="删除指定权限"
 )
 async def delete_permission_by_id(
     permission_id: UUID,
@@ -152,8 +147,7 @@ async def delete_permission_by_id(
 @router.post(
     "/admin/permissions/init-default", 
     response_model=Dict[str, Any], 
-    summary="初始化默认权限", 
-    tags=["权限管理"]
+    summary="初始化默认权限"
 )
 async def init_default_permissions(
     current_admin: User = Depends(get_current_admin),

@@ -42,6 +42,14 @@ from app.product.models import (
     ProductBundle
 )
 
+# 导入产品文章模块相关模型
+from app.product.article.models import (
+    ProductArticle,
+    ProductArticleTranslation,
+    ProductArticleTemplate,
+    product_article_association
+)
+
 # 物流模块已删除，使用order.shipment模块代替
 
 # 导入订单模块相关模型
@@ -68,6 +76,7 @@ from app.customer.gift_registry.models import GiftRegistry, RegistryType, Regist
 # 导入营销模块相关模型
 from app.marketing.coupon.models import Coupon, CouponStatus, CouponBatch
 from app.marketing.customer_coupon.models import CustomerCoupon, CustomerCouponStatus, IssueMethod
+from app.marketing.simple_promotion.models import SimplePromotion, CustomerPromotionUsage, SimplePromotionType, DiscountType
 
 # 导入支付模块相关模型
 from app.payment.models import PaymentLog
@@ -77,6 +86,11 @@ from app.payment.transaction.models import PaymentTransaction, TransactionType, 
 from app.payment.status.models import PaymentStatus, PaymentStatusEnum
 from app.payment.cod.models import CashOnDelivery
 from app.payment.installment.models import InstallmentPlan, InstallmentPlanStatus
+
+# 导入数据分析汇总模块相关模型
+from app.analytics.daily_summary.models import (
+    DailySalesSummary, DailyAdPerformance, DailyUserBehavior, DailyProductPerformance
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

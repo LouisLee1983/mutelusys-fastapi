@@ -37,11 +37,33 @@ class RegistrationSource(str, enum.Enum):
     ADMIN = "admin"            # 管理员添加
 
 
+# 客户角色枚举
+class CustomerRole(str, enum.Enum):
+    REGULAR = "regular"        # 普通客户
+    KOL = "kol"               # KOL/网红/达人
+    VIP = "vip"               # VIP客户（高消费客户）
+
+
 # 地址类型枚举
 class AddressType(str, enum.Enum):
     SHIPPING = "shipping"    # 收货地址
     BILLING = "billing"      # 账单地址
     BOTH = "both"            # 两者都是
+
+
+# 积分交易类型枚举
+class PointsTransactionType(str, enum.Enum):
+    EARN_ORDER = "earn_order"              # 订单获得
+    EARN_REGISTER = "earn_register"        # 注册奖励
+    EARN_REFERRAL = "earn_referral"        # 推荐奖励
+    EARN_BIRTHDAY = "earn_birthday"        # 生日礼物
+    EARN_REVIEW = "earn_review"            # 评价奖励
+    EARN_PROMOTION = "earn_promotion"      # 促销活动
+    REDEEM_PRODUCT = "redeem_product"      # 兑换商品
+    EXPIRE = "expire"                      # 过期
+    REFUND = "refund"                      # 退款返还
+    DEDUCT_REFUND = "deduct_refund"        # 退款扣除
+    ADMIN_ADJUST = "admin_adjust"          # 管理员调整
 
 
 # 客户与客户分组的多对多关联表
@@ -104,6 +126,8 @@ class Customer(Base):
     gender = Column(String(20), nullable=True)
     status = Column(Enum(CustomerStatus), default=CustomerStatus.ACTIVE, nullable=False)  # 客户状态
     membership_level = Column(Enum(MembershipLevel), default=MembershipLevel.REGULAR, nullable=False)   # 会员等级
+    role = Column(Enum(CustomerRole), default=CustomerRole.REGULAR, nullable=False, comment="客户角色")  # 客户角色
+    country_id = Column(Integer, ForeignKey("countries.id"), nullable=True, comment="所属国家")  # 所属国家
     current_points = Column(Integer, default=0, nullable=False, comment="当前可用积分")
     total_points_earned = Column(Integer, default=0, nullable=False, comment="累计获得的积分")
     registration_source = Column(Enum(RegistrationSource), default=RegistrationSource.WEBSITE, nullable=False)  # 注册来源
@@ -129,6 +153,7 @@ class Customer(Base):
     groups = relationship("CustomerGroup", secondary=customer_group, back_populates="customers")
     behaviors = relationship("CustomerBehavior", back_populates="customer", cascade="all, delete-orphan")
     points_history = relationship("CustomerPoints", back_populates="customer", cascade="all, delete-orphan")
+    country = relationship("Country", foreign_keys=[country_id])  # 关联国家
     # orders = relationship("Order", back_populates="customer")  # 暂时注释，避免循环导入
     
     # 多对多关系（暂时注释，等Product模型完善后再启用）
@@ -215,7 +240,7 @@ class CustomerPoints(Base):
     customer_id = Column(UUID(as_uuid=True), ForeignKey("customers.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Integer, nullable=False, comment="积分数量，正数为获取，负数为使用")
     description = Column(String(255), nullable=False, comment="积分描述，如购物获得、积分兑换等")
-    transaction_type = Column(String(50), nullable=False, comment="交易类型，如earn, redeem, expire")
+    transaction_type = Column(Enum(PointsTransactionType), nullable=False, comment="交易类型")
     reference_type = Column(String(50), nullable=True, comment="关联类型，如order, promotion等")
     reference_id = Column(UUID(as_uuid=True), nullable=True, comment="关联ID")
     expiry_date = Column(DateTime, nullable=True, comment="过期时间")

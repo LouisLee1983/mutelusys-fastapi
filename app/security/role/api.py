@@ -15,8 +15,7 @@ router = APIRouter()
 # 获取角色列表 - 仅管理员可用
 @router.get(
     "/admin/roles", 
-    summary="获取角色列表", 
-    tags=["角色管理"]
+    summary="获取角色列表"
 )
 async def get_role_list(
     skip: int = Query(0, ge=0),
@@ -67,8 +66,7 @@ async def get_role_list(
 # 创建角色 - 仅管理员可用
 @router.post(
     "/admin/roles", 
-    summary="创建新角色", 
-    tags=["角色管理"],
+    summary="创建新角色",
     status_code=status.HTTP_201_CREATED
 )
 async def create_role(
@@ -91,8 +89,7 @@ async def create_role(
 # 获取指定角色 - 仅管理员可用
 @router.get(
     "/admin/roles/{role_id}", 
-    summary="获取指定角色信息", 
-    tags=["角色管理"]
+    summary="获取指定角色信息"
 )
 async def get_role_by_id(
     role_id: UUID,
@@ -110,8 +107,7 @@ async def get_role_by_id(
 # 更新指定角色 - 仅管理员可用
 @router.patch(
     "/admin/roles/{role_id}", 
-    summary="更新指定角色信息", 
-    tags=["角色管理"]
+    summary="更新指定角色信息"
 )
 async def update_role_by_id(
     role_id: UUID,
@@ -131,8 +127,7 @@ async def update_role_by_id(
 @router.delete(
     "/admin/roles/{role_id}", 
     response_model=Dict[str, Any], 
-    summary="删除指定角色", 
-    tags=["角色管理"]
+    summary="删除指定角色"
 )
 async def delete_role_by_id(
     role_id: UUID,
@@ -150,8 +145,7 @@ async def delete_role_by_id(
 # 获取角色权限 - 仅管理员可用
 @router.get(
     "/admin/roles/{role_id}/permissions", 
-    summary="获取角色权限", 
-    tags=["角色权限管理"]
+    summary="获取角色权限"
 )
 async def get_role_permissions_api(
     role_id: UUID,
@@ -169,8 +163,7 @@ async def get_role_permissions_api(
 # 设置角色权限 - 仅管理员可用
 @router.post(
     "/admin/roles/{role_id}/permissions", 
-    summary="设置角色权限", 
-    tags=["角色权限管理"]
+    summary="设置角色权限"
 )
 async def assign_permissions_to_role_api(
     role_id: UUID,
@@ -193,8 +186,7 @@ async def assign_permissions_to_role_api(
 @router.post(
     "/admin/roles/init-default", 
     response_model=Dict[str, Any], 
-    summary="初始化默认角色", 
-    tags=["角色管理"]
+    summary="初始化默认角色"
 )
 async def init_default_roles(
     current_admin: User = Depends(get_current_admin),

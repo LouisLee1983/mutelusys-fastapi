@@ -108,6 +108,8 @@ class Order(Base):
     discount_amount = Column(Numeric(10, 2), nullable=False, default=0, comment="折扣金额")
     total_amount = Column(Numeric(10, 2), nullable=False, default=0, comment="订单总金额")
     paid_amount = Column(Numeric(10, 2), nullable=False, default=0, comment="已支付金额")
+    payment_method = Column(String(50), nullable=False, default="CREDIT_CARD", comment="支付方式")
+    points_used = Column(Integer, nullable=False, default=0, comment="使用的积分数量")
     
     # 收货信息
     shipping_name = Column(String(100), nullable=True, comment="收货人姓名")

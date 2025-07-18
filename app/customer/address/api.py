@@ -17,10 +17,10 @@ from app.customer.address.schema import (
 from app.customer.address.service import AddressService
 
 # 管理端API路由
-admin_router = APIRouter(prefix="/api/v1/admin/customers/{customer_id}/addresses", tags=["customer-addresses-admin"])
+admin_router = APIRouter(prefix="/admin/customers/{customer_id}/addresses")
 
 # C端用户API路由
-user_router = APIRouter(prefix="/user/addresses", tags=["customer-addresses"])
+user_router = APIRouter(prefix="/user/addresses")
 
 
 # ----- 管理端API -----

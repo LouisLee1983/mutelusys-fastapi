@@ -19,7 +19,7 @@ from app.product.category.schema import (
 from app.product.category.service import ProductCategoryService
 from app.security.models import User
 
-router = APIRouter(tags=["产品分类"])
+router = APIRouter()
 
 # 统一响应格式
 def success_response(data: Any = None, message: str = "操作成功", code: int = 200):

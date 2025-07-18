@@ -28,16 +28,16 @@ from app.customer.schema import (
 )
 from app.customer.service import CustomerService
 from app.customer.verification_service import EmailVerificationService
-from app.customer.models import RegistrationSource
+from app.customer.models import RegistrationSource, CustomerStatus, MembershipLevel
 
 # 管理端API路由
-admin_router = APIRouter(prefix="/admin/customers", tags=["customers-admin"])
+admin_router = APIRouter(prefix="/admin/customers")
 
 # C端用户API路由
-user_router = APIRouter(prefix="/customer/profile", tags=["customer-profile"])
+user_router = APIRouter(prefix="/customer/profile")
 
 # 公开API路由
-public_router = APIRouter(prefix="/public/customers", tags=["customers-public"])
+public_router = APIRouter(prefix="/public/customers")
 
 
 # ----- 管理端API -----
@@ -58,12 +58,27 @@ def get_customers(
     """
     获取客户列表，支持分页、过滤和搜索（管理员接口）
     """
+    # 转换字符串枚举为枚举类型
+    status_enum = None
+    if status:
+        try:
+            status_enum = CustomerStatus(status)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"无效的客户状态: {status}")
+    
+    membership_level_enum = None
+    if membership_level:
+        try:
+            membership_level_enum = MembershipLevel(membership_level)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"无效的会员等级: {membership_level}")
+    
     return CustomerService.get_customers(
         db=db,
         skip=skip,
         limit=limit,
-        status=status,
-        membership_level=membership_level,
+        status=status_enum,
+        membership_level=membership_level_enum,
         group_id=group_id,
         search=search,
         sort_by=sort_by,

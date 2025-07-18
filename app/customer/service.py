@@ -159,6 +159,8 @@ class CustomerService:
         hashed_password = pwd_context.hash(customer_data.password) if customer_data.password else None
         
         # 创建客户记录
+        from app.customer.models import CustomerRole
+        
         db_customer = Customer(
             email=customer_data.email,
             password_hash=hashed_password,
@@ -167,6 +169,8 @@ class CustomerService:
             phone_number=customer_data.phone_number,
             birth_date=customer_data.birth_date,
             gender=customer_data.gender,
+            role=customer_data.role if hasattr(customer_data, 'role') else CustomerRole.REGULAR,
+            country_id=customer_data.country_id if hasattr(customer_data, 'country_id') else None,
             registration_source=customer_data.registration_source,
             language_preference=customer_data.language_preference,
             currency_preference=customer_data.currency_preference,
@@ -176,6 +180,7 @@ class CustomerService:
         )
         
         # 处理推荐关系
+        referrer = None
         if customer_data.referral_code:
             referrer = db.query(Customer).filter(Customer.referral_code == customer_data.referral_code).first()
             if referrer:
@@ -184,6 +189,21 @@ class CustomerService:
         db.add(db_customer)
         db.commit()
         db.refresh(db_customer)
+        
+        # 发放注册奖励积分
+        try:
+            from app.points.service import PointsService
+            PointsService.grant_registration_points(db, db_customer.id)
+        except Exception as e:
+            print(f"注册积分发放失败: {str(e)}")
+        
+        # 如果有推荐人，发放推荐奖励积分
+        if referrer:
+            try:
+                from app.points.service import PointsService
+                PointsService.grant_referral_points(db, referrer.id, db_customer.email)
+            except Exception as e:
+                print(f"推荐积分发放失败: {str(e)}")
         
         return db_customer
     
@@ -199,12 +219,15 @@ class CustomerService:
         referral_code = CustomerService._generate_referral_code()
         
         # 创建客户记录（密码为空，因为是游客下单）
+        from app.customer.models import CustomerRole
+        
         db_customer = Customer(
             email=customer_data.email,
             password_hash=None,  # 游客下单不设置密码
             first_name=customer_data.first_name,
             last_name=customer_data.last_name,
             phone_number=customer_data.phone_number,
+            role=CustomerRole.REGULAR,  # 游客默认为普通客户
             registration_source=customer_data.registration_source,
             referral_code=referral_code,
             status=CustomerStatus.ACTIVE,
@@ -221,11 +244,71 @@ class CustomerService:
     @staticmethod
     def update_customer(db: Session, customer_id: UUID, customer_data: CustomerUpdate) -> Customer:
         """更新客户信息"""
+        from app.customer.models import CustomerRole
+        from app.marketing.affiliate.models import Affiliate, AffiliateStatus, AffiliateLevel
+        from app.marketing.affiliate_program.models import AffiliateProgram
+        
         customer = CustomerService.get_customer_by_id(db, customer_id)
+        
+        # 记录角色是否变更为KOL
+        old_role = customer.role
         
         # 更新客户字段
         for key, value in customer_data.dict(exclude_unset=True).items():
             setattr(customer, key, value)
+        
+        # 如果角色变更为KOL，自动创建或更新Affiliate账号
+        if customer_data.role == CustomerRole.KOL and old_role != CustomerRole.KOL:
+            # 检查是否已有Affiliate账号
+            existing_affiliate = db.query(Affiliate).filter(
+                Affiliate.customer_id == customer_id
+            ).first()
+            
+            if not existing_affiliate:
+                # 获取默认的分销计划（假设有一个默认计划）
+                default_program = db.query(AffiliateProgram).filter(
+                    AffiliateProgram.is_active == True
+                ).first()
+                
+                if default_program:
+                    # 创建新的Affiliate账号
+                    affiliate_code = f"KOL{customer_id.hex[:8].upper()}"
+                    
+                    new_affiliate = Affiliate(
+                        program_id=default_program.id,
+                        customer_id=customer_id,
+                        code=affiliate_code,
+                        name=f"{customer.first_name or ''} {customer.last_name or ''}".strip() or customer.email,
+                        email=customer.email,
+                        phone=customer.phone_number,
+                        status=AffiliateStatus.APPROVED,  # KOL直接批准
+                        level=AffiliateLevel.GOLD,  # KOL默认金级
+                        commission_rate=15.0,  # KOL 15%佣金率
+                        override_program_rate=True,  # 覆盖项目默认佣金率
+                        cookie_days=60,  # KOL有更长的cookie有效期
+                        payment_threshold=50,  # 更低的支付门槛
+                        approval_date=datetime.utcnow(),
+                        notes="自动创建的KOL分销账号"
+                    )
+                    
+                    db.add(new_affiliate)
+            else:
+                # 更新现有Affiliate账号的状态和佣金率
+                existing_affiliate.status = AffiliateStatus.APPROVED
+                existing_affiliate.level = AffiliateLevel.GOLD
+                existing_affiliate.commission_rate = 15.0
+                existing_affiliate.override_program_rate = True
+                existing_affiliate.notes = (existing_affiliate.notes or "") + "\n升级为KOL账号"
+        
+        # 如果角色从KOL变更为其他，暂停Affiliate账号
+        elif old_role == CustomerRole.KOL and customer_data.role != CustomerRole.KOL:
+            affiliate = db.query(Affiliate).filter(
+                Affiliate.customer_id == customer_id
+            ).first()
+            
+            if affiliate:
+                affiliate.status = AffiliateStatus.SUSPENDED
+                affiliate.notes = (affiliate.notes or "") + f"\n{datetime.utcnow().strftime('%Y-%m-%d')}: 客户角色变更，暂停分销账号"
         
         db.commit()
         db.refresh(customer)

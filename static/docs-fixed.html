@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FastAPI - Swagger UI</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .error { color: red; }
+        .success { color: green; }
+        #fallback { display: none; }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading Swagger UI...</div>
+    <div id="swagger-ui"></div>
+    <div id="fallback">
+        <h2>Swagger UI Failed to Load</h2>
+        <p>It seems the CDN resources are blocked. Here's the API documentation in JSON format:</p>
+        <pre id="api-json"></pre>
+    </div>
+
+    <!-- Try multiple CDN sources -->
+    <script>
+        let swaggerLoaded = false;
+        
+        // Function to load Swagger UI
+        function loadSwaggerUI() {
+            if (typeof SwaggerUIBundle !== 'undefined') {
+                swaggerLoaded = true;
+                document.getElementById('loading').style.display = 'none';
+                
+                const ui = SwaggerUIBundle({
+                    url: window.location.origin + '/openapi.json',
+                    dom_id: '#swagger-ui',
+                    deepLinking: true,
+                    presets: [
+                        SwaggerUIBundle.presets.apis,
+                        SwaggerUIBundle.SwaggerUIStandalonePreset
+                    ],
+                    plugins: [
+                        SwaggerUIBundle.plugins.DownloadUrl
+                    ],
+                    layout: "StandaloneLayout"
+                });
+                window.ui = ui;
+            }
+        }
+        
+        // Function to show fallback
+        function showFallback() {
+            if (!swaggerLoaded) {
+                document.getElementById('loading').innerHTML = '<span class="error">Failed to load Swagger UI from CDN</span>';
+                document.getElementById('fallback').style.display = 'block';
+                
+                // Load and display OpenAPI JSON
+                fetch(window.location.origin + '/openapi.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('api-json').textContent = JSON.stringify(data, null, 2);
+                    })
+                    .catch(error => {
+                        document.getElementById('api-json').textContent = 'Error loading API spec: ' + error;
+                    });
+            }
+        }
+        
+        // Set timeout for fallback
+        setTimeout(showFallback, 5000);
+    </script>
+    
+    <!-- Try loading from jsdelivr CDN -->
+    <link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui.css" 
+          onerror="console.error('Failed to load CSS from jsdelivr')">
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-bundle.js" 
+            onload="loadSwaggerUI()" 
+            onerror="console.error('Failed to load JS from jsdelivr')"></script>
+    
+    <!-- Alternative: Try unpkg CDN -->
+    <script>
+        setTimeout(() => {
+            if (!swaggerLoaded) {
+                console.log('Trying unpkg CDN...');
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js';
+                script.onload = loadSwaggerUI;
+                script.onerror = () => console.error('Failed to load from unpkg');
+                document.head.appendChild(script);
+            }
+        }, 2000);
+    </script>
+    
+    <!-- Alternative: Try cdnjs -->
+    <script>
+        setTimeout(() => {
+            if (!swaggerLoaded) {
+                console.log('Trying cdnjs CDN...');
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.9.0/swagger-ui-bundle.js';
+                script.onload = loadSwaggerUI;
+                script.onerror = () => console.error('Failed to load from cdnjs');
+                document.head.appendChild(script);
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

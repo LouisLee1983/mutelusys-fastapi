@@ -12,7 +12,7 @@ from app.core.file_upload import file_upload_service
 
 router = APIRouter()
 
-@router.post("/upload-image", summary="上传单个商品图片", tags=["文件上传"])
+@router.post("/upload-image", summary="上传单个商品图片")
 async def upload_image(
     file: UploadFile = File(..., description="要上传的图片文件")
 ):
@@ -37,7 +37,7 @@ async def upload_image(
             "data": None
         }
 
-@router.post("/upload-images", summary="批量上传商品图片", tags=["文件上传"])
+@router.post("/upload-images", summary="批量上传商品图片")
 async def upload_images(
     files: List[UploadFile] = File(..., description="要上传的图片文件列表")
 ):
@@ -63,7 +63,7 @@ async def upload_images(
             "data": None
         }
 
-@router.get("/test-images", summary="获取测试用商品图片", tags=["文件上传"])
+@router.get("/test-images", summary="获取测试用商品图片")
 async def get_test_images(
     limit: int = Query(5, ge=1, le=20, description="返回图片数量限制")
 ):
@@ -85,7 +85,7 @@ async def get_test_images(
             "data": None
         }
 
-@router.delete("/delete-file", summary="删除上传的文件", tags=["文件上传"])
+@router.delete("/delete-file", summary="删除上传的文件")
 async def delete_file(
     file_path: str = Query(..., description="要删除的文件路径")
 ):

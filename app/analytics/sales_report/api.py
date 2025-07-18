@@ -8,7 +8,6 @@ from app.core.dependencies import get_db, get_current_admin_user
 # 初始化路由器
 router = APIRouter(
     prefix="/analytics/sales",
-    tags=["Sales Reports"],
     dependencies=[Depends(get_current_admin_user)]
 )
 

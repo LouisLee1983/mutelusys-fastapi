@@ -26,8 +26,7 @@ ai_service = AICopilotService()
 @router.post(
     "/analyze-product",
     summary="分析商品图片",
-    description="上传商品图片，使用AI分析并生成商品信息建议",
-    tags=["AI助手"]
+    description="上传商品图片，使用AI分析并生成商品信息建议"
 )
 async def analyze_product_images(
     request: ProductAnalysisRequest,
@@ -67,8 +66,7 @@ async def analyze_product_images(
 @router.post(
     "/apply-suggestions",
     summary="应用AI建议",
-    description="根据AI分析结果创建或更新商品",
-    tags=["AI助手"]
+    description="根据AI分析结果创建或更新商品"
 )
 async def apply_analysis_suggestions(
     request: ApplyAnalysisRequest,
@@ -102,8 +100,7 @@ async def apply_analysis_suggestions(
 @router.get(
     "/analysis/{analysis_id}",
     summary="获取分析结果",
-    description="根据分析ID获取详细的分析结果",
-    tags=["AI助手"]
+    description="根据分析ID获取详细的分析结果"
 )
 async def get_analysis_result(
     analysis_id: UUID,
@@ -134,8 +131,7 @@ async def get_analysis_result(
 @router.get(
     "/call-records",
     summary="获取AI调用记录",
-    description="获取AI调用历史记录列表",
-    tags=["AI助手"]
+    description="获取AI调用历史记录列表"
 )
 async def get_call_records(
     skip: int = 0,
@@ -171,8 +167,7 @@ async def get_call_records(
 @router.get(
     "/statistics",
     summary="获取AI使用统计",
-    description="获取AI调用统计信息，包括成功率、成本等",
-    tags=["AI助手"]
+    description="获取AI调用统计信息，包括成功率、成本等"
 )
 async def get_ai_statistics(
     db: Session = Depends(get_db)
@@ -220,8 +215,7 @@ async def get_ai_statistics(
 @router.get(
     "/system-data",
     summary="获取系统数据",
-    description="获取系统基础数据，用于AI分析结果映射",
-    tags=["AI助手"]
+    description="获取系统基础数据，用于AI分析结果映射"
 )
 async def get_system_data_for_ai(
     db: Session = Depends(get_db),
@@ -268,8 +262,7 @@ async def get_system_data_for_ai(
 @router.post(
     "/create-product-from-ai", 
     summary="根据AI分析创建商品",
-    description="根据AI分析结果创建商品",
-    tags=["AI助手"]
+    description="根据AI分析结果创建商品"
 )
 async def create_product_from_ai_analysis(
     request: dict,
@@ -333,8 +326,7 @@ async def create_product_from_ai_analysis(
 @router.post(
     "/translate-category",
     summary="AI翻译分类",
-    description="使用AI翻译分类信息到多种语言",
-    tags=["AI助手"]
+    description="使用AI翻译分类信息到多种语言"
 )
 async def translate_category(
     request: dict,

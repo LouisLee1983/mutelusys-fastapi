@@ -10,7 +10,9 @@ from app.db.init_db import *
 app = FastAPI(
     title="Mutelusys API",
     description="Mutelusys后台管理系统API",
-    version="0.1.0"
+    version="0.1.0",
+    docs_url=None,  # 禁用默认文档
+    redoc_url=None  # 禁用默认redoc
 )
 
 # CORS中间件配置
@@ -70,8 +72,44 @@ app.include_router(api_router)
 
 @app.get("/")
 def read_root():
-    return {"msg": "Mutelusys FastAPI 后端已启动"} 
+    return {"msg": "Mutelusys FastAPI 后端已启动"}
+
+# 自定义文档页面，使用本地Swagger UI
+from fastapi.responses import HTMLResponse
+
+@app.get("/docs", response_class=HTMLResponse)
+async def custom_swagger_ui_html():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <link type="text/css" rel="stylesheet" href="/static/swagger-ui/swagger-ui.css">
+        <title>Mutelusys API - Swagger UI</title>
+    </head>
+    <body>
+        <div id="swagger-ui"></div>
+        <script src="/static/swagger-ui/swagger-ui-bundle.js"></script>
+        <script src="/static/swagger-ui/swagger-ui-standalone-preset.js"></script>
+        <script>
+        const ui = SwaggerUIBundle({
+            url: '/openapi.json',
+            dom_id: '#swagger-ui',
+            deepLinking: true,
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+            ],
+            plugins: [
+                SwaggerUIBundle.plugins.DownloadUrl
+            ],
+            layout: "StandaloneLayout"
+        })
+        window.ui = ui
+        </script>
+    </body>
+    </html>
+    """ 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8008, reload=True) 
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True) 

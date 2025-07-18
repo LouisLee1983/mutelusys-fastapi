@@ -13,27 +13,67 @@ from app.product.service import ProductService
 from app.product.sku.service import ProductSkuService
 
 # 创建公开API路由器
-public_router = APIRouter(prefix="/public", tags=["C端公开API"])
+public_router = APIRouter(prefix="/public")
+
+# 导入关税计算API
 
 # 首页相关接口
 @public_router.get("/home/banners")
 async def get_home_banners(db: Session = Depends(get_db)):
     """获取首页轮播图/Banner"""
-    # TODO: 实现Banner获取逻辑
+    # 返回默认轮播图数据，使用正确的图片路径
+    default_banners = [
+        {
+            "id": "1",
+            "title": "探索独特文化艺术品",
+            "subtitle": "传承千年文化之美",
+            "description": "精选佛教艺术品、护身符与灵性饰品",
+            "image_url": "/static/images/front-web/banner/banner-1.jpg",
+            "link_url": "/products",
+            "sort_order": 1,
+            "is_active": True,
+            "button_text": "立即选购"
+        },
+        {
+            "id": "2",
+            "title": "珠宝首饰系列",
+            "subtitle": "精工细作，独具匠心",
+            "description": "发现独特的手工珠宝与护身符",
+            "image_url": "/static/images/front-web/banner/banner-2.jpg",
+            "link_url": "/categories/jewelry",
+            "sort_order": 2,
+            "is_active": True,
+            "button_text": "查看系列"
+        },
+        {
+            "id": "3",
+            "title": "灵性之旅",
+            "subtitle": "寻找内心的平静与力量",
+            "description": "冥想用品、水晶能量与灵性饰品",
+            "image_url": "/static/images/front-web/banner/banner-3.jpg",
+            "link_url": "/categories/spiritual",
+            "sort_order": 3,
+            "is_active": True,
+            "button_text": "开始探索"
+        },
+        {
+            "id": "4",
+            "title": "2025 蛇年新品",
+            "subtitle": "限定系列，寓意吉祥",
+            "description": "独特设计，精选材质，传递美好祝福",
+            "image_url": "/static/images/front-web/banner/banner-4.jpg",
+            "link_url": "/collections/snake-2025",
+            "sort_order": 4,
+            "is_active": True,
+            "button_text": "查看新品"
+        }
+    ]
+    
     return {
         "code": 200,
         "message": "获取成功", 
         "data": {
-            "banners": [
-                {
-                    "id": "1",
-                    "title": "2025蛇年新品",
-                    "image_url": "/images/banners/snake-2025.jpg",
-                    "link_url": "/collections/snake-2025",
-                    "sort_order": 1,
-                    "is_active": True
-                }
-            ]
+            "banners": default_banners
         }
     }
 
@@ -383,7 +423,7 @@ async def get_public_sku_inventory_status(
     }
 
 # 订单相关接口
-@public_router.post("/orders", status_code=201)
+@public_router.post("/quick-order", status_code=201)
 async def create_public_order(
     order_data: dict,
     db: Session = Depends(get_db)
@@ -632,8 +672,7 @@ async def get_public_order_by_number(
 @public_router.get(
     "/policies",
     summary="获取所有政策内容",
-    description="获取商品详情页展示的政策内容，包括运输政策、退款政策、关于我们",
-    tags=["商品展示"]
+    description="获取商品详情页展示的政策内容，包括运输政策、退款政策、关于我们"
 )
 async def get_policies(language: str = "en"):
     """获取所有政策内容（支持多语言）"""
@@ -696,8 +735,7 @@ async def get_policies(language: str = "en"):
 @public_router.get(
     "/policies/{policy_type}",
     summary="获取指定政策内容",
-    description="获取指定类型的政策内容",
-    tags=["商品展示"]
+    description="获取指定类型的政策内容"
 )
 async def get_policy(policy_type: str, language: str = "en"):
     """获取指定政策内容（支持多语言）"""

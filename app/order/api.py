@@ -497,6 +497,158 @@ async def update_shipping_status_admin(
     )
 
 
+# 关税相关接口
+@admin_router.get("/orders/{order_id}/duty", response_model=Dict[str, Any])
+async def get_order_duty_info(
+    order_id: UUID,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """获取订单关税信息（管理员）
+    
+    管理员可以查看订单的关税计算详情
+    """
+    duty_info = OrderService.get_order_duty_info(db, order_id)
+    if not duty_info:
+        return ResponseBase(
+            message="该订单无关税信息",
+            data=None
+        )
+    
+    return ResponseBase(
+        message="获取订单关税信息成功",
+        data=duty_info
+    )
+
+
+@admin_router.put("/orders/{order_id}/duty/status", response_model=Dict[str, Any])
+async def update_order_duty_status(
+    order_id: UUID,
+    status_data: Dict[str, str] = Body(...),
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """更新订单关税状态（管理员）
+    
+    管理员可以更新订单的关税状态：calculated, confirmed, paid, disputed
+    """
+    new_status = status_data.get("status")
+    if not new_status:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="状态参数不能为空"
+        )
+    
+    valid_statuses = ["calculated", "confirmed", "paid", "disputed"]
+    if new_status not in valid_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"无效的关税状态，支持的状态: {valid_statuses}"
+        )
+    
+    duty_info = OrderService.update_order_duty_status(db, order_id, new_status)
+    if not duty_info:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="订单不存在或无关税信息"
+        )
+    
+    return ResponseBase(
+        message=f"关税状态已更新为 {new_status}",
+        data=duty_info
+    )
+
+
+@admin_router.post("/orders/{order_id}/duty/recalculate", response_model=Dict[str, Any])
+async def recalculate_order_duty(
+    order_id: UUID,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """重新计算订单关税（管理员）
+    
+    当订单内容发生变化时，管理员可以重新计算关税
+    """
+    result = OrderService.recalculate_order_duty(db, order_id)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="订单不存在"
+        )
+    
+    return ResponseBase(
+        message="关税重新计算完成",
+        data=result
+    )
+
+
+@admin_router.get("/orders-with-duty", response_model=Dict[str, Any])
+async def get_orders_with_duty(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin_user)
+):
+    """获取包含关税信息的订单列表（管理员）
+    
+    管理员可以查看所有有关税记录的订单
+    """
+    orders_with_duty, total = OrderService.get_orders_with_duty(db, page, page_size)
+    
+    return {
+        "message": "获取关税订单列表成功",
+        "data": {
+            "items": orders_with_duty,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size
+        }
+    }
+
+
+# 用户端关税信息查询
+@user_router.get("/my-orders/{order_id}/duty", response_model=Dict[str, Any])
+async def get_my_order_duty_info(
+    order_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_customer)
+):
+    """获取用户订单关税信息
+    
+    用户可以查看自己订单的关税详情
+    """
+    # 先验证订单是否属于当前用户
+    order = OrderService.get_order_by_id(db, order_id)
+    if not order or order.customer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="订单不存在"
+        )
+    
+    duty_info = OrderService.get_order_duty_info(db, order_id)
+    if not duty_info:
+        return ResponseBase(
+            message="该订单无关税信息",
+            data=None
+        )
+    
+    # 过滤敏感信息，只返回用户需要的信息
+    user_duty_info = {
+        "duty_amount": duty_info["duty_amount"],
+        "currency": duty_info["currency"],
+        "tax_rate": duty_info["tax_rate"],
+        "taxable_amount": duty_info["taxable_amount"],
+        "status": duty_info["status"],
+        "created_at": duty_info["created_at"]
+    }
+    
+    return ResponseBase(
+        message="获取订单关税信息成功",
+        data=user_duty_info
+    )
+
+
 @admin_router.get("/orders-count", response_model=ResponseBase)
 async def count_orders_by_status_admin(
     db: Session = Depends(get_db),

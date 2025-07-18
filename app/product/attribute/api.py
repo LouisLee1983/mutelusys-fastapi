@@ -18,7 +18,7 @@ from app.product.attribute.schema import (
 from app.product.attribute.service import ProductAttributeService, ProductAttributeValueService
 from app.security.models import User
 
-router = APIRouter(prefix="/attributes", tags=["商品属性管理"])
+router = APIRouter(prefix="/attributes")
 
 # 统一响应格式
 def success_response(data: Any = None, message: str = "操作成功", code: int = 200):

@@ -4,7 +4,7 @@ from datetime import datetime, date
 from pydantic import BaseModel, EmailStr, Field, validator, model_validator
 import re
 
-from app.customer.models import CustomerStatus, MembershipLevel, RegistrationSource
+from app.customer.models import CustomerStatus, MembershipLevel, RegistrationSource, CustomerRole
 
 
 class CustomerBase(BaseModel):
@@ -17,6 +17,8 @@ class CustomerBase(BaseModel):
     gender: Optional[str] = Field(None, max_length=20)
     language_preference: Optional[str] = Field(None, pattern=r'^[a-z]{2}(-[A-Z]{2})?$')
     currency_preference: Optional[str] = Field(None, pattern=r'^[A-Z]{3}$')
+    role: Optional[CustomerRole] = Field(default=CustomerRole.REGULAR, description="客户角色")
+    country_id: Optional[int] = Field(None, description="所属国家ID")
 
 
 class CustomerCreate(CustomerBase):
@@ -123,6 +125,8 @@ class CustomerUpdate(BaseModel):
     gender: Optional[str] = Field(None, max_length=20)
     status: Optional[CustomerStatus] = None
     membership_level: Optional[MembershipLevel] = None
+    role: Optional[CustomerRole] = None
+    country_id: Optional[int] = None
     language_preference: Optional[str] = Field(None, pattern=r'^[a-z]{2}(-[A-Z]{2})?$')
     currency_preference: Optional[str] = Field(None, pattern=r'^[A-Z]{3}$')
     notes: Optional[str] = None
@@ -218,6 +222,8 @@ class CustomerResponse(CustomerBase):
     id: UUID
     status: CustomerStatus
     membership_level: MembershipLevel
+    role: CustomerRole
+    country_id: Optional[int] = None
     current_points: int
     total_points_earned: int
     registration_source: RegistrationSource
@@ -236,6 +242,7 @@ class CustomerDetailedResponse(CustomerResponse):
     """客户详细响应模型，包含关联数据"""
     groups: List[Dict[str, Any]] = []
     addresses: List[Dict[str, Any]] = []
+    country: Optional[Dict[str, Any]] = None  # 国家信息
     points_history: Optional[List[Dict[str, Any]]] = None
     orders_count: Optional[int] = None
     total_spent: Optional[float] = None
@@ -281,3 +288,84 @@ class CustomerEmailVerification(BaseModel):
 class CustomerPasswordResetRequest(BaseModel):
     """客户密码重置请求"""
     email: EmailStr
+
+
+# 积分相关Schema
+from app.customer.models import PointsTransactionType
+
+
+class PointsTransactionCreate(BaseModel):
+    """创建积分交易记录"""
+    customer_id: UUID
+    amount: int = Field(..., description="积分数量，正数为获取，负数为使用")
+    description: str = Field(..., max_length=255, description="积分描述")
+    transaction_type: PointsTransactionType
+    reference_type: Optional[str] = Field(None, max_length=50, description="关联类型，如order, promotion等")
+    reference_id: Optional[UUID] = Field(None, description="关联ID")
+    expiry_date: Optional[datetime] = Field(None, description="过期时间")
+
+
+class PointsTransactionResponse(BaseModel):
+    """积分交易响应"""
+    id: UUID
+    customer_id: UUID
+    amount: int
+    description: str
+    transaction_type: PointsTransactionType
+    reference_type: Optional[str] = None
+    reference_id: Optional[UUID] = None
+    expiry_date: Optional[datetime] = None
+    is_expired: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class CustomerPointsBalance(BaseModel):
+    """客户积分余额信息"""
+    customer_id: UUID
+    current_points: int
+    total_points_earned: int
+    expiring_points: Optional[int] = Field(None, description="即将过期的积分（30天内）")
+    expiry_date: Optional[datetime] = Field(None, description="最近的过期时间")
+
+
+class CustomerPointsList(BaseModel):
+    """客户积分历史列表"""
+    items: List[PointsTransactionResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+    balance: CustomerPointsBalance
+
+
+# KOL申请相关Schema
+class KOLApplicationCreate(BaseModel):
+    """KOL申请创建"""
+    social_media_handles: Dict[str, str] = Field(..., description="社交媒体账号，如 {'instagram': 'xxx', 'tiktok': 'yyy'}")
+    follower_count: int = Field(..., gt=0, description="粉丝总数")
+    content_category: str = Field(..., max_length=100, description="内容类别")
+    introduction: str = Field(..., max_length=1000, description="个人介绍")
+    sample_work_urls: Optional[List[str]] = Field(None, description="作品链接")
+
+
+class KOLApplicationResponse(BaseModel):
+    """KOL申请响应"""
+    id: UUID
+    customer_id: UUID
+    status: str  # pending, approved, rejected
+    social_media_handles: Dict[str, str]
+    follower_count: int
+    content_category: str
+    introduction: str
+    sample_work_urls: Optional[List[str]] = None
+    review_notes: Optional[str] = None
+    reviewed_by: Optional[UUID] = None
+    reviewed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True

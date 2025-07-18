@@ -25,7 +25,7 @@ def error_response(message: str = "操作失败", code: int = 400, data: Any = N
 
 
 # 公开路由 - 用户登录
-@router.post("/admin/login", summary="管理员登录", tags=["管理员身份认证"])
+@router.post("/admin/login", summary="管理员登录")
 async def admin_login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -102,8 +102,7 @@ async def admin_login(
 # 用户注册 - 仅管理员可用
 @router.post(
     "/admin/users", 
-    summary="创建新用户", 
-    tags=["用户管理"],
+    summary="创建新用户",
     status_code=status.HTTP_201_CREATED
 )
 async def create_user(
@@ -127,8 +126,7 @@ async def create_user(
 # 获取当前用户信息
 @router.get(
     "/admin/users/me", 
-    summary="获取当前用户信息", 
-    tags=["用户管理"]
+    summary="获取当前用户信息"
 )
 async def read_users_me(
     current_user: User = Depends(get_current_admin_user),
@@ -140,8 +138,7 @@ async def read_users_me(
 # 更新当前用户信息
 @router.patch(
     "/admin/users/me", 
-    summary="更新当前用户信息", 
-    tags=["用户管理"]
+    summary="更新当前用户信息"
 )
 async def update_user_me(
     user_data: schema.UserUpdate,
@@ -160,8 +157,7 @@ async def update_user_me(
 @router.post(
     "/admin/users/me/change-password", 
     response_model=Dict[str, Any], 
-    summary="修改当前用户密码", 
-    tags=["用户管理"]
+    summary="修改当前用户密码"
 )
 async def change_user_password(
     password_data: schema.PasswordChange,
@@ -179,8 +175,7 @@ async def change_user_password(
 # 获取用户列表 - 仅管理员可用
 @router.get(
     "/admin/users", 
-    summary="获取用户列表", 
-    tags=["用户管理"]
+    summary="获取用户列表"
 )
 async def get_user_list(
     skip: int = Query(0, ge=0),
@@ -234,8 +229,7 @@ async def get_user_list(
 # 获取指定用户 - 仅管理员可用
 @router.get(
     "/admin/users/{user_id}", 
-    summary="获取指定用户信息", 
-    tags=["用户管理"]
+    summary="获取指定用户信息"
 )
 async def get_user_by_id(
     user_id: UUID,
@@ -253,8 +247,7 @@ async def get_user_by_id(
 # 更新指定用户 - 仅管理员可用
 @router.patch(
     "/admin/users/{user_id}", 
-    summary="更新指定用户信息", 
-    tags=["用户管理"]
+    summary="更新指定用户信息"
 )
 async def update_user_by_id(
     user_id: UUID,
@@ -274,8 +267,7 @@ async def update_user_by_id(
 @router.delete(
     "/admin/users/{user_id}", 
     response_model=Dict[str, Any], 
-    summary="删除指定用户", 
-    tags=["用户管理"]
+    summary="删除指定用户"
 )
 async def delete_user_by_id(
     user_id: UUID,
@@ -298,8 +290,7 @@ async def delete_user_by_id(
 @router.post(
     "/admin/users/{user_id}/roles/{role_id}", 
     response_model=Dict[str, Any], 
-    summary="为用户分配角色", 
-    tags=["用户角色管理"]
+    summary="为用户分配角色"
 )
 async def assign_role_to_user_api(
     user_id: UUID,
@@ -319,8 +310,7 @@ async def assign_role_to_user_api(
 @router.delete(
     "/admin/users/{user_id}/roles/{role_id}", 
     response_model=Dict[str, Any], 
-    summary="从用户移除角色", 
-    tags=["用户角色管理"]
+    summary="从用户移除角色"
 )
 async def remove_role_from_user_api(
     user_id: UUID,

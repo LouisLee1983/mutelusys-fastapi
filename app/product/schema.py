@@ -13,6 +13,7 @@ from app.product.models import ProductStatus
 class ProductBase(BaseModel):
     """商品基础信息Schema"""
     sku_code: str = Field(..., description="商品编码，唯一")
+    sku_name: Optional[str] = Field(None, description="商品SKU外显名称，给消费者看的名称")
     status: ProductStatus = Field(default=ProductStatus.DRAFT, description="商品状态")
     weight: Optional[float] = Field(None, description="商品重量(克)")
     width: Optional[float] = Field(None, description="商品宽度(厘米)")
@@ -46,6 +47,7 @@ class ProductCreate(ProductBase):
 class ProductUpdate(BaseModel):
     """更新商品请求Schema"""
     sku_code: Optional[str] = Field(None, description="商品编码")
+    sku_name: Optional[str] = Field(None, description="商品SKU外显名称，给消费者看的名称")
     name: Optional[str] = Field(None, description="商品名称")
     description: Optional[str] = Field(None, description="商品描述")
     status: Optional[ProductStatus] = Field(None, description="商品状态")
@@ -103,4 +105,49 @@ class ProductQueryParams(BaseModel):
     is_new: Optional[bool] = Field(None, description="是否新品筛选")
     is_bestseller: Optional[bool] = Field(None, description="是否畅销品筛选")
     sort_by: str = Field(default="updated_at", description="排序字段")
-    sort_desc: bool = Field(default=True, description="是否降序排序") 
+    sort_desc: bool = Field(default=True, description="是否降序排序")
+
+
+class ProductTranslationBase(BaseModel):
+    """商品翻译基础Schema"""
+    language_code: str = Field(..., description="语言代码")
+    name: str = Field(..., description="商品名称")
+    sku_name: Optional[str] = Field(None, description="商品SKU外显名称翻译")
+    short_description: Optional[str] = Field(None, description="简短描述")
+    description: Optional[str] = Field(None, description="详细描述")
+    specifications: Optional[str] = Field(None, description="规格说明")
+    benefits: Optional[str] = Field(None, description="商品好处/特点")
+    instructions: Optional[str] = Field(None, description="使用说明")
+    seo_title: Optional[str] = Field(None, description="SEO标题")
+    seo_description: Optional[str] = Field(None, description="SEO描述")
+    seo_keywords: Optional[str] = Field(None, description="SEO关键词")
+
+
+class ProductTranslationCreate(ProductTranslationBase):
+    """创建商品翻译Schema"""
+    product_id: UUID = Field(..., description="商品ID")
+
+
+class ProductTranslationUpdate(BaseModel):
+    """更新商品翻译Schema"""
+    name: Optional[str] = Field(None, description="商品名称")
+    sku_name: Optional[str] = Field(None, description="商品SKU外显名称翻译")
+    short_description: Optional[str] = Field(None, description="简短描述")
+    description: Optional[str] = Field(None, description="详细描述")
+    specifications: Optional[str] = Field(None, description="规格说明")
+    benefits: Optional[str] = Field(None, description="商品好处/特点")
+    instructions: Optional[str] = Field(None, description="使用说明")
+    seo_title: Optional[str] = Field(None, description="SEO标题")
+    seo_description: Optional[str] = Field(None, description="SEO描述")
+    seo_keywords: Optional[str] = Field(None, description="SEO关键词")
+
+
+class ProductTranslationResponse(ProductTranslationBase):
+    """商品翻译响应Schema"""
+    id: UUID
+    product_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True 

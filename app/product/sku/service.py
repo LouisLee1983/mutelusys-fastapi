@@ -9,7 +9,7 @@ from datetime import datetime
 from app.product.models import Product, ProductStatus
 
 # 从相应子模块导入具体模型
-from app.product.models import ProductSku, ProductAttributeValue, ProductAttribute, ProductInventory, ProductPrice, ProductImage, sku_attribute_value, ImageType
+from app.product.models import ProductSku, ProductAttributeValue, ProductAttribute, ProductInventory, ProductPrice, ProductImage, sku_attribute_value, ImageType, StockLog
 
 from app.product.sku.schema import (
     ProductSkuCreate,
@@ -68,16 +68,8 @@ class ProductSkuService:
             
         # 低库存过滤
         if low_stock is True:
-            # 子查询获取库存信息
-            inventory_subq = db.query(
-                ProductInventory.sku_id,
-                ProductInventory.quantity,
-                ProductInventory.reserved_quantity,
-                ProductInventory.alert_threshold
-            ).subquery()
-            
-            query = query.join(inventory_subq, ProductSku.id == inventory_subq.c.sku_id).filter(
-                (inventory_subq.c.quantity - inventory_subq.c.reserved_quantity) <= inventory_subq.c.alert_threshold
+            query = query.filter(
+                ProductSku.stock_quantity <= ProductSku.low_stock_threshold
             )
         
         # 计算总数
@@ -137,6 +129,7 @@ class ProductSkuService:
             sku_dict = {
                 "id": str(sku.id),
                 "sku_code": sku.sku_code,
+                "sku_name": sku.sku_name,
                 "product_id": str(sku.product_id),
                 "barcode": sku.barcode,
                 "price_adjustment": sku.price_adjustment,
@@ -260,6 +253,7 @@ class ProductSkuService:
             sku_dict = {
                 "id": str(sku.id),
                 "sku_code": sku.sku_code,
+                "sku_name": sku.sku_name,
                 "product_id": str(sku.product_id),
                 "barcode": sku.barcode,
                 "price_adjustment": sku.price_adjustment,
@@ -351,6 +345,16 @@ class ProductSkuService:
             "low_stock_threshold"
         })
         
+        # 如果sku_name没有填写，默认使用sku_code的值
+        if not sku_dict.get("sku_name"):
+            sku_dict["sku_name"] = sku_dict["sku_code"]
+        
+        # 设置库存初始值
+        if hasattr(sku_data, 'quantity') and sku_data.quantity is not None:
+            sku_dict["stock_quantity"] = sku_data.quantity
+        if hasattr(sku_data, 'low_stock_threshold') and sku_data.low_stock_threshold is not None:
+            sku_dict["low_stock_threshold"] = sku_data.low_stock_threshold
+        
         new_sku = ProductSku(**sku_dict)
         db.add(new_sku)
         db.flush()  # 获取新创建的ID
@@ -386,15 +390,7 @@ class ProductSkuService:
             # 通过多对多关系添加关联
             new_sku.attribute_values.append(attr_value)
         
-        # 如果提供了库存信息，创建库存记录
-        if sku_data.quantity is not None:
-            inventory = ProductInventory(
-                sku_id=new_sku.id,
-                product_id=sku_data.product_id,
-                quantity=sku_data.quantity,
-                alert_threshold=sku_data.low_stock_threshold
-            )
-            db.add(inventory)
+        # 库存信息已经在创建SKU时直接设置
             
         db.commit()
         db.refresh(new_sku)
@@ -432,6 +428,13 @@ class ProductSkuService:
                 
         # 更新基本信息
         update_data = sku_data.dict(exclude_unset=True, exclude={"attribute_values"})
+        
+        # 如果更新了sku_code但没有设置sku_name，则使用sku_code作为sku_name
+        if "sku_code" in update_data and "sku_name" not in update_data:
+            update_data["sku_name"] = update_data["sku_code"]
+        # 如果sku_name被设置为空值，则使用sku_code作为默认值
+        elif "sku_name" in update_data and not update_data["sku_name"]:
+            update_data["sku_name"] = update_data.get("sku_code", sku.sku_code)
         
         for key, value in update_data.items():
             setattr(sku, key, value)
@@ -629,21 +632,14 @@ class ProductSkuService:
             ProductSku.is_active == True
         ).scalar()
         
-        # 低库存SKU数 - 需要关联库存表
-        low_stock_skus = db.query(func.count(ProductSku.id)).join(
-            ProductInventory, ProductSku.id == ProductInventory.sku_id
-        ).filter(
-            and_(
-                ProductInventory.quantity <= ProductInventory.alert_threshold,
-                ProductInventory.alert_threshold.isnot(None)
-            )
+        # 低库存SKU数 - 直接从SKU表查询
+        low_stock_skus = db.query(func.count(ProductSku.id)).filter(
+            ProductSku.stock_quantity <= ProductSku.low_stock_threshold
         ).scalar()
         
         # 缺货SKU数
-        out_of_stock_skus = db.query(func.count(ProductSku.id)).join(
-            ProductInventory, ProductSku.id == ProductInventory.sku_id
-        ).filter(
-            ProductInventory.quantity == 0
+        out_of_stock_skus = db.query(func.count(ProductSku.id)).filter(
+            ProductSku.stock_quantity == 0
         ).scalar()
         
         return {
@@ -656,3 +652,60 @@ class ProductSkuService:
                 "out_of_stock_skus": out_of_stock_skus or 0
             }
         }
+    
+    # ==================== 新增的简化库存管理方法 ====================
+    
+    @staticmethod
+    def adjust_stock(
+        db: Session,
+        sku_id: UUID,
+        quantity_change: int,
+        change_type: str,
+        order_id: Optional[UUID] = None,
+        remark: Optional[str] = None,
+        created_by: Optional[str] = None
+    ) -> ProductSku:
+        """统一的库存调整方法（简化版）"""
+        # 使用行锁防止并发问题
+        sku = db.query(ProductSku).filter(ProductSku.id == sku_id).with_for_update().first()
+        if not sku:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"SKU ID {sku_id} 不存在"
+            )
+        
+        # 计算新库存
+        new_quantity = sku.stock_quantity + quantity_change
+        if new_quantity < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"库存不足，当前库存 {sku.stock_quantity}，尝试减少 {abs(quantity_change)}"
+            )
+        
+        # 更新库存
+        sku.stock_quantity = new_quantity
+        sku.updated_at = datetime.utcnow()
+        
+        # 记录日志
+        log = StockLog(
+            sku_id=sku_id,
+            change_type=change_type,
+            quantity=quantity_change,
+            balance=new_quantity,
+            order_id=order_id,
+            remark=remark,
+            created_by=created_by
+        )
+        db.add(log)
+        
+        db.commit()
+        db.refresh(sku)
+        return sku
+    
+    @staticmethod
+    def check_stock(db: Session, sku_id: UUID, required_quantity: int) -> bool:
+        """检查库存是否充足"""
+        sku = db.query(ProductSku).filter(ProductSku.id == sku_id).first()
+        if not sku:
+            return False
+        return sku.stock_quantity >= required_quantity

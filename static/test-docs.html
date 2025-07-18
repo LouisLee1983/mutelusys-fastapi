@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FastAPI Docs Debug</title>
+    <link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui.css">
+</head>
+<body>
+    <h1>FastAPI Documentation Debug Page</h1>
+    <div id="status">Loading...</div>
+    <div id="swagger-ui"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+    <script>
+    // Debug function
+    function updateStatus(msg, isError = false) {
+        const status = document.getElementById('status');
+        status.innerHTML += '<br>' + new Date().toISOString() + ': ' + msg;
+        if (isError) status.style.color = 'red';
+    }
+    
+    updateStatus('Page loaded');
+    
+    // Check if SwaggerUIBundle is loaded
+    if (typeof SwaggerUIBundle === 'undefined') {
+        updateStatus('ERROR: SwaggerUIBundle not loaded!', true);
+    } else {
+        updateStatus('SwaggerUIBundle loaded successfully');
+    }
+    
+    // Try to initialize Swagger UI
+    try {
+        updateStatus('Initializing Swagger UI...');
+        const ui = SwaggerUIBundle({
+            url: '/openapi.json',
+            dom_id: '#swagger-ui',
+            deepLinking: true,
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIBundle.SwaggerUIStandalonePreset
+            ],
+            plugins: [
+                SwaggerUIBundle.plugins.DownloadUrl
+            ],
+            layout: "StandaloneLayout",
+            onComplete: function() {
+                updateStatus('Swagger UI initialized successfully!');
+            }
+        });
+        window.ui = ui;
+    } catch (error) {
+        updateStatus('ERROR: ' + error.message, true);
+        console.error(error);
+    }
+    
+    // Check OpenAPI JSON
+    fetch('/openapi.json')
+        .then(response => response.json())
+        .then(data => {
+            updateStatus('OpenAPI JSON loaded: ' + data.info.title + ' v' + data.info.version);
+            updateStatus('Total paths: ' + Object.keys(data.paths).length);
+        })
+        .catch(error => {
+            updateStatus('ERROR loading OpenAPI JSON: ' + error.message, true);
+        });
+    </script>
+</body>
+</html>
